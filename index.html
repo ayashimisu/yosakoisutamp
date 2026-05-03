@@ -22,6 +22,12 @@
   button { font-family:'Noto Serif JP',serif; cursor:pointer; border:none; border-radius:8px; padding:9px 16px; font-size:12px; letter-spacing:0.1em; }
   .btn-gps-start { background:rgba(200,134,10,0.8); color:#0D0D0D; font-weight:700; }
   .btn-gps-stop  { background:rgba(180,40,40,0.7); color:#E8DCC8; }
+  /* モード切り替え */
+  .mode-bar { display:flex; gap:8px; align-items:center; }
+  .mode-btn { flex:1; padding:10px; border-radius:8px; font-size:12px; font-weight:700; letter-spacing:0.1em; border:1px solid transparent; background:rgba(30,25,10,0.7); color:#6A5A40; }
+  .mode-btn.active-normal { background:rgba(30,80,30,0.7); color:#80D880; border-color:rgba(80,180,80,0.4); }
+  .mode-btn.active-hard   { background:rgba(80,20,20,0.7); color:#D08080; border-color:rgba(180,60,60,0.4); }
+  .mode-note { font-size:10px; color:#6A5A40; text-align:center; margin-top:6px; letter-spacing:0.1em; }
   .nearby-card { border-radius:14px; padding:18px; animation:pulse 2s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.85} }
   .nearby-top { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
@@ -30,6 +36,7 @@
   .nearby-name  { font-size:17px; font-weight:900; margin-bottom:4px; }
   .nearby-chara { font-size:11px; margin-bottom:3px; }
   .nearby-msg   { font-size:11px; color:#8A7A60; font-style:italic; line-height:1.6; }
+  .nearby-mode  { font-size:9px; letter-spacing:0.15em; margin-top:4px; }
   .btn-stamp { width:100%; padding:14px; font-size:14px; font-weight:900; letter-spacing:0.2em; }
   .btn-stamp:disabled { background:rgba(60,60,60,0.5)!important; color:#5A5A5A!important; cursor:not-allowed; }
   .debug-panel { background:rgba(15,15,35,0.7); border:1px solid rgba(100,100,200,0.3); border-radius:10px; padding:12px 14px; }
@@ -37,7 +44,6 @@
   .debug-btns  { display:flex; flex-wrap:wrap; gap:5px; }
   .btn-debug { font-size:9px; padding:4px 8px; border-radius:4px; background:rgba(40,40,80,0.6); color:#8080A0; border:1px solid rgba(100,100,200,0.2); }
   .btn-debug.active { color:#C0C0FF; border-color:rgba(150,150,255,0.5); background:rgba(60,60,120,0.6); }
-  /* キャラ別タブ */
   .char-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
   .char-tab { font-size:10px; padding:5px 10px; border-radius:20px; background:rgba(30,25,15,0.8); color:#6A5A40; border:1px solid rgba(100,80,30,0.3); cursor:pointer; }
   .char-tab.active { color:#E8DCC8; border-color:rgba(200,134,10,0.6); background:rgba(50,40,10,0.8); }
@@ -61,7 +67,7 @@
   .popup-badge { font-size:11px; letter-spacing:0.3em; margin-bottom:4px; }
   .popup-name  { font-size:18px; font-weight:900; color:#E8DCC8; margin-bottom:4px; }
   .popup-chara { font-size:11px; margin-bottom:8px; }
-  .popup-msg   { font-size:11px; color:#8A7A60; font-style:italic; line-height:1.7; }
+  .popup-mode  { font-size:10px; letter-spacing:0.15em; margin-top:8px; }
 </style>
 </head>
 <body>
@@ -82,11 +88,21 @@
   </div>
 </div>
 
+<!-- モード切り替え -->
+<div class="section">
+  <div class="mode-bar">
+    <button class="mode-btn active-normal" id="btnNormal" onclick="setMode('normal')">🗾 ノーマル</button>
+    <button class="mode-btn" id="btnHard"   onclick="setMode('hard')">⚔️ ハード</button>
+  </div>
+  <div class="mode-note" id="modeNote">ノーマル：遠方スポットは市町村エリアで判定</div>
+</div>
+
 <div class="section" id="nearbySection"></div>
 
+<!-- デバッグ（高知市外スポットのみ） -->
 <div class="section">
   <div class="debug-panel">
-    <div class="debug-label">🛸 デバッグ：現地シミュレート</div>
+    <div class="debug-label">🛸 デバッグ：市町村外スポットのシミュレート</div>
     <div class="debug-btns" id="debugBtns"></div>
   </div>
 </div>
@@ -106,72 +122,72 @@
 
 <script>
 const CHARS = {
-  yoshida:  { name:"吉田東洋",   emoji:"📜", color:"#4A7A8A" },
-  itagaki:  { name:"板垣退助",   emoji:"✊", color:"#8A6A20" },
-  goto:     { name:"後藤象二郎", emoji:"🕶️", color:"#5B8FA8" },
-  ryoma:    { name:"坂本龍馬",   emoji:"⚓", color:"#C8860A" },
-  nakaoka:  { name:"中岡慎太郎", emoji:"👊", color:"#7B3F3F" },
-  takechi:  { name:"武市半平太", emoji:"⚔️", color:"#3D5A3E" },
-  izo:      { name:"岡田以蔵",   emoji:"🍡", color:"#6B4F8A" },
-  iwasaki:  { name:"岩崎弥太郎", emoji:"💴", color:"#4A6A4A" },
+  yoshida:  { name:"吉田東洋",    emoji:"📜", color:"#4A7A8A" },
+  itagaki:  { name:"板垣退助",    emoji:"✊", color:"#8A6A20" },
+  goto:     { name:"後藤象二郎",  emoji:"🕶️", color:"#5B8FA8" },
+  ryoma:    { name:"坂本龍馬",    emoji:"⚓", color:"#C8860A" },
+  nakaoka:  { name:"中岡慎太郎",  emoji:"👊", color:"#7B3F3F" },
+  takechi:  { name:"武市半平太",  emoji:"⚔️", color:"#3D5A3E" },
+  izo:      { name:"岡田以蔵",    emoji:"🍡", color:"#6B4F8A" },
+  iwasaki:  { name:"岩崎弥太郎",  emoji:"💴", color:"#4A6A4A" },
   manjiro:  { name:"ジョン万次郎",emoji:"🌊", color:"#2A6A8A" },
-  yodo:     { name:"山内容堂",   emoji:"🍶", color:"#7A3A3A" },
-  tani:     { name:"谷干城",     emoji:"🏯", color:"#8B6914" },
+  yodo:     { name:"山内容堂",    emoji:"🍶", color:"#7A3A3A" },
+  tani:     { name:"谷干城",      emoji:"🏯", color:"#8B6914" },
 };
 
+// outer:true = 高知市外スポット（ノーマルモードで半径5000m）
 const SPOTS = [
-  // 吉田東洋
-  { id:"yoshida_junan",    char:"yoshida",  name:"吉田東洋殉難之地",         lat:33.5608629, lng:133.5377231, radius:80  },
-  // 板垣退助
-  { id:"itagaki_tei",      char:"itagaki",  name:"板垣退助邸跡",              lat:33.5459326, lng:133.5595752, radius:80  },
-  { id:"itagaki_zo",       char:"itagaki",  name:"板垣退助先生像",            lat:33.5608167, lng:133.5325594, radius:80  },
-  { id:"itagaki_tanjo",    char:"itagaki",  name:"板垣退助先生誕生の地",      lat:33.5581292, lng:133.5371238, radius:80  },
-  // 後藤象二郎
-  { id:"goto_tanjo",       char:"goto",     name:"後藤象二郎先生誕生之地",    lat:33.5564524, lng:133.5372246, radius:80  },
-  { id:"goto_minken",      char:"goto",     name:"高知市立自由民権記念館",    lat:33.5431310, lng:133.5502860, radius:100 },
-  // 坂本龍馬
-  { id:"ryoma_tanjo",      char:"ryoma",    name:"坂本龍馬誕生地",            lat:33.5571713, lng:133.5259210, radius:80  },
-  { id:"ryoma_saitaniya",  char:"ryoma",    name:"才谷屋跡",                  lat:33.5568995, lng:133.5222595, radius:80  },
-  { id:"ryoma_machi",      char:"ryoma",    name:"龍馬の生まれたまち記念館",  lat:33.5565000, lng:133.5245000, radius:100 },
-  { id:"ryoma_museum",     char:"ryoma",    name:"高知県立坂本龍馬記念館",    lat:33.4964655, lng:133.5719482, radius:100 },
-  { id:"ryoma_zo",         char:"ryoma",    name:"坂本龍馬像",                lat:33.4986187, lng:133.5754821, radius:100 },
-  // 中岡慎太郎
-  { id:"nakaoka_kan",      char:"nakaoka",  name:"中岡慎太郎館",              lat:33.4564402, lng:134.0569584, radius:100 },
-  { id:"nakaoka_seika",    char:"nakaoka",  name:"中岡慎太郎生家",            lat:33.4571961, lng:134.0561382, radius:100 },
-  { id:"nakaoka_zo",       char:"nakaoka",  name:"中岡慎太郎之像",            lat:33.2457735, lng:134.1762621, radius:100 },
-  // 武市半平太
-  { id:"takechi_junsetsu", char:"takechi",  name:"武市瑞山殉節の地の碑",      lat:33.5598891, lng:133.5355396, radius:80  },
-  { id:"takechi_tei",      char:"takechi",  name:"武市半平太邸跡",            lat:33.5602837, lng:133.5478792, radius:80  },
-  // 岡田以蔵
-  { id:"izo_momiji",       char:"izo",      name:"紅葉橋",                    lat:33.5523743, lng:133.5051352, radius:100 },
-  { id:"izo_haka",         char:"izo",      name:"岡田以蔵の墓",              lat:33.5803490, lng:133.5521741, radius:100 },
-  // 岩崎弥太郎
-  { id:"iwasaki_zo",       char:"iwasaki",  name:"岩崎弥太郎像",              lat:33.5258400, lng:133.9004710, radius:100 },
-  { id:"iwasaki_seika",    char:"iwasaki",  name:"岩崎弥太郎生家",            lat:33.5260380, lng:133.8999868, radius:100 },
-  // ジョン万次郎
-  { id:"manjiro_kan",      char:"manjiro",  name:"ジョン万次郎資料館",        lat:32.7813734, lng:132.9326612, radius:100 },
-  { id:"manjiro_seika",    char:"manjiro",  name:"ジョン万次郎生家",          lat:32.7593775, lng:132.9645816, radius:100 },
-  { id:"manjiro_zo",       char:"manjiro",  name:"中浜万次郎像",              lat:32.7255834, lng:133.0195690, radius:100 },
-  // 山内容堂
-  { id:"yodo_tei",         char:"yodo",     name:"山内容堂邸跡",              lat:33.5562204, lng:133.5328997, radius:80  },
-  { id:"yodo_tanjo",       char:"yodo",     name:"山内容堂公誕生之地の碑",    lat:33.5609440, lng:133.5345901, radius:80  },
-  { id:"yodo_kochi",       char:"yodo",     name:"高知城",                    lat:33.5608125, lng:133.5314844, radius:150 },
-  // 谷干城
-  { id:"tani_figure",      char:"tani",     name:"谷干城フィギュア像",        lat:33.2087536, lng:133.1360827, radius:100 },
-  { id:"tani_tanjo",       char:"tani",     name:"谷干城生誕地石碑",          lat:33.2100660, lng:133.1318160, radius:100 },
+  { id:"yoshida_junan",    char:"yoshida",  name:"吉田東洋殉難之地",        lat:33.5608629, lng:133.5377231, radius:80,  outer:false },
+  { id:"itagaki_tei",      char:"itagaki",  name:"板垣退助邸跡",             lat:33.5459326, lng:133.5595752, radius:80,  outer:false },
+  { id:"itagaki_zo",       char:"itagaki",  name:"板垣退助先生像",           lat:33.5608167, lng:133.5325594, radius:80,  outer:false },
+  { id:"itagaki_tanjo",    char:"itagaki",  name:"板垣退助先生誕生の地",     lat:33.5581292, lng:133.5371238, radius:80,  outer:false },
+  { id:"goto_tanjo",       char:"goto",     name:"後藤象二郎先生誕生之地",   lat:33.5564524, lng:133.5372246, radius:80,  outer:false },
+  { id:"goto_minken",      char:"goto",     name:"高知市立自由民権記念館",   lat:33.5431310, lng:133.5502860, radius:100, outer:false },
+  { id:"ryoma_tanjo",      char:"ryoma",    name:"坂本龍馬誕生地",           lat:33.5571713, lng:133.5259210, radius:80,  outer:false },
+  { id:"ryoma_saitaniya",  char:"ryoma",    name:"才谷屋跡",                 lat:33.5568995, lng:133.5222595, radius:80,  outer:false },
+  { id:"ryoma_machi",      char:"ryoma",    name:"龍馬の生まれたまち記念館", lat:33.5565000, lng:133.5245000, radius:100, outer:false },
+  { id:"ryoma_museum",     char:"ryoma",    name:"高知県立坂本龍馬記念館",   lat:33.4964655, lng:133.5719482, radius:100, outer:false },
+  { id:"ryoma_zo",         char:"ryoma",    name:"坂本龍馬像",               lat:33.4986187, lng:133.5754821, radius:100, outer:false },
+  { id:"nakaoka_kan",      char:"nakaoka",  name:"中岡慎太郎館",             lat:33.4564402, lng:134.0569584, radius:100, outer:true  },
+  { id:"nakaoka_seika",    char:"nakaoka",  name:"中岡慎太郎生家",           lat:33.4571961, lng:134.0561382, radius:100, outer:true  },
+  { id:"nakaoka_zo",       char:"nakaoka",  name:"中岡慎太郎之像",           lat:33.2457735, lng:134.1762621, radius:100, outer:true  },
+  { id:"takechi_junsetsu", char:"takechi",  name:"武市瑞山殉節の地の碑",     lat:33.5598891, lng:133.5355396, radius:80,  outer:false },
+  { id:"takechi_tei",      char:"takechi",  name:"武市半平太邸跡",           lat:33.5602837, lng:133.5478792, radius:80,  outer:false },
+  { id:"izo_momiji",       char:"izo",      name:"紅葉橋",                   lat:33.5523743, lng:133.5051352, radius:100, outer:false },
+  { id:"izo_haka",         char:"izo",      name:"岡田以蔵の墓",             lat:33.5803490, lng:133.5521741, radius:100, outer:false },
+  { id:"iwasaki_zo",       char:"iwasaki",  name:"岩崎弥太郎像",             lat:33.5258400, lng:133.9004710, radius:100, outer:true  },
+  { id:"iwasaki_seika",    char:"iwasaki",  name:"岩崎弥太郎生家",           lat:33.5260380, lng:133.8999868, radius:100, outer:true  },
+  { id:"manjiro_kan",      char:"manjiro",  name:"ジョン万次郎資料館",       lat:32.7813734, lng:132.9326612, radius:100, outer:true  },
+  { id:"manjiro_seika",    char:"manjiro",  name:"ジョン万次郎生家",         lat:32.7593775, lng:132.9645816, radius:100, outer:true  },
+  { id:"manjiro_zo",       char:"manjiro",  name:"中浜万次郎像",             lat:32.7255834, lng:133.0195690, radius:100, outer:true  },
+  { id:"yodo_tei",         char:"yodo",     name:"山内容堂邸跡",             lat:33.5562204, lng:133.5328997, radius:80,  outer:false },
+  { id:"yodo_tanjo",       char:"yodo",     name:"山内容堂公誕生之地の碑",   lat:33.5609440, lng:133.5345901, radius:80,  outer:false },
+  { id:"yodo_kochi",       char:"yodo",     name:"高知城",                   lat:33.5608125, lng:133.5314844, radius:150, outer:false },
+  { id:"tani_figure",      char:"tani",     name:"谷干城フィギュア像",       lat:33.2087536, lng:133.1360827, radius:100, outer:true  },
+  { id:"tani_tanjo",       char:"tani",     name:"谷干城生誕地石碑",         lat:33.2100660, lng:133.1318160, radius:100, outer:true  },
 ];
 
-// ── localStorage ──────────────────────────────────────────
+const NORMAL_RADIUS = 5000; // ノーマルモードの市町村外判定半径
+
+function getEffectiveRadius(spot, mode) {
+  return (mode === 'normal' && spot.outer) ? NORMAL_RADIUS : spot.radius;
+}
+
 function loadStamps() {
   try { const r=localStorage.getItem("stamps_v1"); if(r) return JSON.parse(r); } catch(e){}
   const init={}; SPOTS.forEach(s=>init[s.id]=false); return init;
 }
 function saveStamps(s){ try{localStorage.setItem("stamps_v1",JSON.stringify(s));}catch(e){} }
 
-let stamps=loadStamps(), userPos=null, watchId=null, tracking=false;
+// モードもlocalStorageで保存
+function loadMode(){ try{ return localStorage.getItem("mode_v1")||"normal"; }catch(e){return "normal";} }
+function saveMode(m){ try{localStorage.setItem("mode_v1",m);}catch(e){} }
+
+let stamps=loadStamps();
+let mode=loadMode();
+let userPos=null, watchId=null, tracking=false;
 let debugSpot=null, distances={}, nearbySpot=null, filterChar="all";
 
-// ── 距離計算 ──────────────────────────────────────────────
 function getDistance(la1,ln1,la2,ln2){
   const R=6371000, dL=(la2-la1)*Math.PI/180, dG=(ln2-ln1)*Math.PI/180;
   const a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dG/2)**2;
@@ -187,11 +203,22 @@ function updateDistances(){
     distances[s.id]=Math.round(d);
     if(d<minDist){minDist=d;closest=s;}
   });
-  nearbySpot=(minDist<=closest.radius)?closest:null;
+  const r=getEffectiveRadius(closest,mode);
+  nearbySpot=(minDist<=r)?closest:null;
   renderNearby();renderGrid();
 }
 
-// ── GPS ───────────────────────────────────────────────────
+function setMode(m){
+  mode=m;
+  saveMode(m);
+  document.getElementById("btnNormal").className="mode-btn"+(m==="normal"?" active-normal":"");
+  document.getElementById("btnHard").className  ="mode-btn"+(m==="hard"  ?" active-hard":"");
+  document.getElementById("modeNote").textContent=
+    m==="normal"?"ノーマル：遠方スポットは市町村エリアで判定":
+                  "ハード：全スポット史跡の前100m以内で判定";
+  updateDistances();
+}
+
 function toggleGPS(){tracking?stopGPS():startGPS();}
 function startGPS(){
   if(!navigator.geolocation){document.getElementById("gpsError").textContent="GPSに対応していません";return;}
@@ -224,7 +251,6 @@ function stopGPS(){
   updateDistances();
 }
 
-// ── デバッグ ──────────────────────────────────────────────
 function setDebug(id){
   debugSpot=id?SPOTS.find(s=>s.id===id):null;
   document.querySelectorAll(".btn-debug").forEach(b=>b.classList.remove("active"));
@@ -232,7 +258,6 @@ function setDebug(id){
   updateDistances();
 }
 
-// ── スタンプ取得 ──────────────────────────────────────────
 function getStamp(){
   if(!nearbySpot||stamps[nearbySpot.id])return;
   stamps[nearbySpot.id]=true;
@@ -241,9 +266,10 @@ function getStamp(){
   renderNearby();renderGrid();renderCount();
 }
 
-// ── ポップアップ ──────────────────────────────────────────
 function showPopup(spot){
   const c=CHARS[spot.char];
+  const modeLabel=mode==="hard"?"⚔️ ハードモード取得":"🗾 ノーマルモード取得";
+  const modeColor=mode==="hard"?"#D08080":"#80D880";
   document.getElementById("popupArea").innerHTML=`
     <div class="popup-overlay" onclick="closePopup()">
       <div class="popup-card" style="background:linear-gradient(135deg,#1A1208,#0D0D0D);border:2px solid ${c.color};box-shadow:0 0 60px ${c.color}40">
@@ -251,13 +277,13 @@ function showPopup(spot){
         <div class="popup-badge" style="color:${c.color}">スタンプ取得！</div>
         <div class="popup-name">${spot.name}</div>
         <div class="popup-chara" style="color:${c.color}">${c.name}</div>
+        <div class="popup-mode" style="color:${modeColor}">${modeLabel}</div>
       </div>
     </div>`;
   setTimeout(closePopup,3000);
 }
 function closePopup(){document.getElementById("popupArea").innerHTML="";}
 
-// ── フィルタ ──────────────────────────────────────────────
 function setFilter(char){
   filterChar=char;
   document.querySelectorAll(".char-tab").forEach(t=>t.classList.remove("active"));
@@ -266,7 +292,6 @@ function setFilter(char){
   renderGrid();
 }
 
-// ── レンダリング ──────────────────────────────────────────
 function renderCount(){
   const n=Object.values(stamps).filter(Boolean).length;
   document.getElementById("countLabel").textContent=n+" / "+SPOTS.length+" 取得";
@@ -276,6 +301,8 @@ function renderNearby(){
   const sec=document.getElementById("nearbySection");
   if(!nearbySpot){sec.innerHTML="";return;}
   const s=nearbySpot,c=CHARS[s.char],got=stamps[s.id];
+  const modeLabel=mode==="hard"?"⚔️ ハードモード":"🗾 ノーマルモード";
+  const modeColor=mode==="hard"?"#D08080":"#80D880";
   sec.innerHTML=`
     <div class="nearby-card" style="background:linear-gradient(135deg,${c.color}22,${c.color}0A);border:1px solid ${c.color}60">
       <div class="nearby-top">
@@ -284,6 +311,7 @@ function renderNearby(){
           <div class="nearby-label" style="color:${c.color}">ここにスポットがあります！</div>
           <div class="nearby-name">${s.name}</div>
           <div class="nearby-chara" style="color:${c.color}">${c.name}</div>
+          <div class="nearby-mode" style="color:${modeColor}">${modeLabel}</div>
         </div>
       </div>
       <button class="btn-stamp"
@@ -298,12 +326,13 @@ function renderGrid(){
   const filtered=filterChar==="all"?SPOTS:SPOTS.filter(s=>s.char===filterChar);
   document.getElementById("stampGrid").innerHTML=filtered.map(s=>{
     const c=CHARS[s.char],got=stamps[s.id],d=distances[s.id];
+    const r=getEffectiveRadius(s,mode);
     const distHtml=(!got&&d!==undefined)?`<div class="stamp-dist">約${d>1000?(d/1000).toFixed(1)+"km":d+"m"}</div>`:"";
     const doneHtml=got?`<div class="stamp-done" style="color:${c.color}">取得済</div>`:"";
     return `<div class="stamp-item ${got?"got":""}" style="${got?`background:${c.color}18;border-color:${c.color}50`:""}">
       <div class="stamp-emoji">${c.emoji}</div>
       <div class="stamp-name">${s.name}</div>
-      <div class="stamp-chara">${c.name}</div>
+      <div class="stamp-chara">${c.name}${s.outer?" 🗾":""}</div>
       ${distHtml}${doneHtml}
     </div>`;
   }).join("");
@@ -318,12 +347,19 @@ function renderCharTabs(){
 }
 
 function renderDebugBtns(){
+  // デバッグは高知市外スポットのみ
+  const outerSpots=SPOTS.filter(s=>s.outer);
   document.getElementById("debugBtns").innerHTML=
     `<button class="btn-debug" onclick="setDebug(null)">リセット</button>`+
-    SPOTS.map(s=>`<button id="dbg_${s.id}" class="btn-debug" onclick="setDebug('${s.id}')">${CHARS[s.char].emoji}${s.name.slice(0,6)}</button>`).join("");
+    outerSpots.map(s=>`<button id="dbg_${s.id}" class="btn-debug" onclick="setDebug('${s.id}')">${CHARS[s.char].emoji}${s.name.slice(0,6)}</button>`).join("");
 }
 
-renderCharTabs();renderDebugBtns();renderCount();renderGrid();
+// 初期化
+setMode(mode);
+renderCharTabs();
+renderDebugBtns();
+renderCount();
+renderGrid();
 </script>
 </body>
 </html>
