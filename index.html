@@ -352,4 +352,189 @@ function startGPS(){
       updateDistances(); updateUserMarker(); updateMapMarkers();
       renderNearby(); renderMapNearby(); renderGrid();
       if(!townFetchTimer){
-        fetchTown(userPos.lat,user
+        fetchTown(userPos.lat,userPos.lng);
+        townFetchTimer=setInterval(()=>{if(userPos)fetchTown(userPos.lat,userPos.lng);},30000);
+      }
+    },
+    err=>{document.getElementById("gpsError").textContent="GPS取得失敗: "+err.message;},
+    {enableHighAccuracy:true,maximumAge:5000}
+  );
+  tracking=true;
+  document.getElementById("gpsStatus").textContent="● GPS追跡中";
+  document.getElementById("gpsStatus").className="gps-status on";
+  document.getElementById("gpsBar").className="gps-bar active";
+  document.getElementById("gpsBtn").textContent="停止";
+  document.getElementById("gpsBtn").className="btn-gps-stop";
+}
+function stopGPS(){
+  if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+  if(townFetchTimer){clearInterval(townFetchTimer);townFetchTimer=null;}
+  tracking=false;userPos=null;watchId=null;currentTown="";
+  document.getElementById("gpsStatus").textContent="○ GPS停止中";
+  document.getElementById("gpsStatus").className="gps-status off";
+  document.getElementById("gpsBar").className="gps-bar";
+  document.getElementById("gpsBtn").textContent="GPS開始";
+  document.getElementById("gpsBtn").className="btn-gps-start";
+  document.getElementById("gpsCoords").textContent="";
+  document.getElementById("gpsTown").textContent="";
+  distances={}; if(userMarker){map.removeLayer(userMarker);userMarker=null;}
+  renderNearby(); renderMapNearby(); renderGrid(); updateMapMarkers();
+}
+
+// ── モード ────────────────────────────────────────────────
+function setMode(m){
+  mode=m;saveMode(m);
+  document.getElementById("btnNormal").className="mode-btn"+(m==="normal"?" active-normal":"");
+  document.getElementById("btnHard").className  ="mode-btn"+(m==="hard"  ?" active-hard":"");
+  renderNearby(); renderMapNearby(); updateMapMarkers();
+}
+
+// ── デバッグ ──────────────────────────────────────────────
+function setDebug(id,town){
+  debugSpot=id?SPOTS.find(s=>s.id===id):null;
+  debugTown=town||null;
+  document.querySelectorAll(".btn-debug").forEach(b=>b.classList.remove("active"));
+  if(id)document.getElementById("dbg_"+id)?.classList.add("active");
+  document.getElementById("gpsTown").textContent=town?"📍 "+town+"（デバッグ）":"";
+  updateDistances(); updateUserMarker(); updateMapMarkers();
+  renderNearby(); renderMapNearby(); renderGrid();
+  if(debugSpot) map.setView([debugSpot.lat,debugSpot.lng],15);
+}
+
+// ── スタンプ取得 ──────────────────────────────────────────
+function getStamp(id){
+  const spot=SPOTS.find(s=>s.id===id);
+  if(!spot||stamps[id])return;
+  stamps[id]=true; saveStamps(stamps);
+  showPopup(spot);
+  updateMapMarkers();
+  renderNearby(); renderMapNearby(); renderGrid(); renderCount();
+  // ポップアップ更新
+  if(spotMarkers[id]) spotMarkers[id].setPopupContent(makePopupHtml(spot));
+}
+
+// ── ポップアップ ──────────────────────────────────────────
+function showPopup(spot){
+  const c=CHARS[spot.char];
+  const modeLabel=mode==="hard"?"⚔️ ハードモード取得":"🗾 ノーマルモード取得";
+  const modeColor=mode==="hard"?"#FF8080":"#60F060";
+  document.getElementById("popupArea").innerHTML=`
+    <div class="popup-overlay" onclick="closePopup()">
+      <div class="popup-card" style="background:linear-gradient(135deg,#1A1208,#0D0D0D);border:2px solid ${c.color};box-shadow:0 0 60px ${c.color}40">
+        <div class="popup-emoji">${c.emoji}</div>
+        <div class="popup-badge" style="color:${c.color}">スタンプ取得！</div>
+        <div class="popup-name">${spot.name}</div>
+        <div class="popup-chara" style="color:${c.color}">${c.name}</div>
+        <div class="popup-mode" style="color:${modeColor}">${modeLabel}</div>
+      </div>
+    </div>`;
+  setTimeout(closePopup,3000);
+}
+function closePopup(){document.getElementById("popupArea").innerHTML="";}
+
+// ── タブ切り替え ──────────────────────────────────────────
+function switchTab(tab){
+  currentTab=tab;
+  document.getElementById("tab-map").className=tab==="map"?"show":"";
+  document.getElementById("tab-stamp").className=tab==="stamp"?"show":"";
+  document.getElementById("tabBtnMap").className="tab-btn"+(tab==="map"?" active":"");
+  document.getElementById("tabBtnStamp").className="tab-btn"+(tab==="stamp"?" active":"");
+  if(tab==="map") setTimeout(()=>map.invalidateSize(),100);
+}
+
+// ── フィルタ ──────────────────────────────────────────────
+function setFilter(char){
+  filterChar=char;
+  document.querySelectorAll(".char-tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById("tab_"+char)?.classList.add("active");
+  document.getElementById("filterLabel").textContent=char==="all"?"全て表示":CHARS[char]?.name;
+  renderGrid();
+}
+
+// ── レンダリング ──────────────────────────────────────────
+function renderCount(){
+  const n=Object.values(stamps).filter(Boolean).length;
+  document.getElementById("countLabel").textContent=n+" / "+SPOTS.length+" 取得";
+}
+
+function nearbyItemHtml(s){
+  const c=CHARS[s.char],got=stamps[s.id],d=distances[s.id];
+  const inRange=isInRange(s);
+  const distDisplay=(mode==="normal"&&s.town&&(debugTown===s.town||currentTown===s.town))
+    ?`<span style="color:#60F060;font-size:11px;font-weight:700;">${s.town}内</span>`
+    :`<span class="nearby-item-dist ${inRange?"close":"far"}">${d!==undefined?distLabel(d):"---"}</span>`;
+  return `<div class="nearby-item ${inRange&&!got?"in-range":""}"
+    style="border-color:${inRange?c.color+"60":"rgba(80,70,50,0.4)"};background:${inRange?c.color+"12":"rgba(35,28,18,0.9)"}">
+    <div class="nearby-item-top">
+      <div class="nearby-item-emoji">${c.emoji}</div>
+      <div class="nearby-item-info">
+        <div class="nearby-item-name" style="color:${inRange?c.color:"#E8DCC8"}">${s.name}</div>
+        <div class="nearby-item-chara" style="color:${c.color}">${c.name}</div>
+      </div>
+      ${distDisplay}
+    </div>
+    ${inRange?`<button class="btn-stamp-sm"
+      style="background:${got?"rgba(60,60,60,0.5)":`linear-gradient(135deg,${c.color},${c.color}99)`};color:${got?"#5A5A5A":"#0D0D0D"}"
+      ${got?"disabled":""} onclick="getStamp('${s.id}')">
+      ${got?"✓ 取得済み":"🔖 スタンプを押す"}
+    </button>`:""}
+  </div>`;
+}
+
+function renderNearby(){
+  // スタンプ帳タブには近隣リストなし（地図タブに集約）
+}
+
+function renderMapNearby(){
+  const el=document.getElementById("mapNearby");
+  const visible=getVisibleSpots();
+  if(!visible.length){el.innerHTML="";el.style.display="none";return;}
+  el.style.display="block";
+  const modeColor=mode==="hard"?"#FF8080":"#60F060";
+  el.innerHTML=`<div style="font-size:10px;letter-spacing:0.2em;color:#C8860A;margin-bottom:8px;">
+    📍 近くのスポット <span style="color:${modeColor};font-size:9px;">${mode==="hard"?"⚔️ ハード":"🗾 ノーマル"}</span>
+  </div>`+visible.map(nearbyItemHtml).join("");
+}
+
+function renderGrid(){
+  const filtered=filterChar==="all"?SPOTS:SPOTS.filter(s=>s.char===filterChar);
+  document.getElementById("stampGrid").innerHTML=filtered.map(s=>{
+    const c=CHARS[s.char],got=stamps[s.id],d=distances[s.id];
+    const distHtml=(!got&&d!==undefined)?`<div class="stamp-dist">約${distLabel(d)}</div>`:"";
+    const doneHtml=got?`<div class="stamp-done" style="color:${c.color}">取得済</div>`:"";
+    const townHtml=s.town?`<div style="font-size:8px;color:#8080A0;margin-top:2px;">🗾${s.town}</div>`:"";
+    return `<div class="stamp-item ${got?"got":""}" style="${got?`background:${c.color}18;border-color:${c.color}50`:""}">
+      <div class="stamp-emoji">${c.emoji}</div>
+      <div class="stamp-name">${s.name}</div>
+      <div class="stamp-chara">${c.name}</div>
+      ${townHtml}${distHtml}${doneHtml}
+    </div>`;
+  }).join("");
+}
+
+function renderCharTabs(){
+  document.getElementById("charTabs").innerHTML=
+    `<button id="tab_all" class="char-tab active" onclick="setFilter('all')">全員</button>`+
+    Object.entries(CHARS).map(([k,c])=>
+      `<button id="tab_${k}" class="char-tab" onclick="setFilter('${k}')">${c.emoji}${c.name}</button>`
+    ).join("");
+}
+
+function renderDebugBtns(){
+  const outer=SPOTS.filter(s=>s.town);
+  document.getElementById("debugBtns").innerHTML=
+    `<button class="btn-debug" onclick="setDebug(null,null)">リセット</button>`+
+    outer.map(s=>`<button id="dbg_${s.id}" class="btn-debug" onclick="setDebug('${s.id}','${s.town}')">${CHARS[s.char].emoji}${s.name.slice(0,6)}</button>`).join("");
+}
+
+// 初期化
+setMode(mode);
+updateMapMarkers();
+renderCharTabs();
+renderDebugBtns();
+renderCount();
+renderGrid();
+document.getElementById("mapNearby").style.display="none";
+</script>
+</body>
+</html>
