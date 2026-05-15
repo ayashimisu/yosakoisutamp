@@ -334,8 +334,8 @@ function getVisibleSpots(){
   const pos=debugSpot||userPos;
   const town=debugTown||currentTown;
   if(!pos && !town) return [];
-  const outerVisible=SPOTS.filter(s=>s.town&&(debugTown===s.town||currentTown===s.town));
-  const citySpots=SPOTS.filter(s=>!s.town&&distances[s.id]!==undefined)
+  const outerVisible=SPOTS.filter(s=>s.town&&(debugTown===s.town||currentTown===s.town)&&!stamps[s.id]);
+  const citySpots=SPOTS.filter(s=>!s.town&&distances[s.id]!==undefined&&!stamps[s.id])
     .sort((a,b)=>distances[a.id]-distances[b.id]).slice(0,CITY_SHOW_LIMIT);
   return [...outerVisible,...citySpots];
 }
@@ -353,4 +353,3 @@ function startGPS(){
       renderNearby(); renderMapNearby(); renderGrid();
       if(!townFetchTimer){
         fetchTown(userPos.lat,userPos.lng);
-        townFetchTimer=setInte
