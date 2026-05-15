@@ -41,9 +41,9 @@
   .mode-note { font-size:10px; color:#C8A870; text-align:center; margin:0 14px 14px; }
 
   /* 地図タブ */
-  #tab-map { display:none; flex-direction:column; height:calc(100vh - 120px); }
+  #tab-map { display:none; flex-direction:column; }
   #tab-map.show { display:flex; }
-  #map { flex:1; z-index:1; }
+  #map { height:calc(100vh - 220px); min-height:300px; z-index:1; }
 
   /* 地図上の近隣リスト */
   #mapNearby { background:rgba(13,13,13,0.95); border-top:1px solid rgba(200,134,10,0.3); max-height:220px; overflow-y:auto; padding:10px 14px; }
@@ -205,7 +205,7 @@ const SPOTS = [
   { id:"manjiro_zo",       char:"manjiro",  name:"中浜万次郎像",             lat:32.7255834, lng:133.0195690, radius:100, town:"土佐清水市" },
   { id:"yodo_tei",         char:"yodo",     name:"山内容堂邸跡",             lat:33.5562204, lng:133.5328997, radius:80,  town:null },
   { id:"yodo_tanjo",       char:"yodo",     name:"山内容堂公誕生之地の碑",   lat:33.5609440, lng:133.5345901, radius:80,  town:null },
-  { id:"yodo_kochi",       char:"yodo",     name:"高知城",                   lat:33.5608125, lng:133.5314844, radius:150, town:null },
+  { id:"yodo_kochi",       char:"yodo",     name:"高知城",                   lat:33.5608125, lng:133.5314844, radius:500, town:null },
   { id:"tani_figure",      char:"tani",     name:"谷干城フィギュア像",       lat:33.2087536, lng:133.1360827, radius:100, town:"四万十町" },
   { id:"tani_tanjo",       char:"tani",     name:"谷干城生誕地石碑",         lat:33.2100660, lng:133.1318160, radius:100, town:"四万十町" },
 ];
@@ -249,7 +249,6 @@ function updateMapMarkers(){
   SPOTS.forEach(s=>{
     const c=CHARS[s.char];
     const got=stamps[s.id];
-    const inRange=isInRange(s);
     if(spotMarkers[s.id]){
       spotMarkers[s.id].setIcon(makeIcon(c.color, got));
     } else {
@@ -290,8 +289,10 @@ function updateUserMarker(){
     className:'', iconSize:[20,20], iconAnchor:[10,10]
   });
   if(userMarker){ userMarker.setLatLng([pos.lat,pos.lng]); }
-  else { userMarker=L.marker([pos.lat,pos.lng],{icon:blueIcon,zIndexOffset:1000}).addTo(map); }
-  map.setView([pos.lat,pos.lng],15);
+  else {
+    userMarker=L.marker([pos.lat,pos.lng],{icon:blueIcon,zIndexOffset:1000}).addTo(map);
+    map.setView([pos.lat,pos.lng],15); // 最初の1回だけ移動
+  }
 }
 
 // ── 市町村API ─────────────────────────────────────────────
@@ -333,8 +334,8 @@ function getVisibleSpots(){
   const pos=debugSpot||userPos;
   const town=debugTown||currentTown;
   if(!pos && !town) return [];
-  const outerVisible=SPOTS.filter(s=>s.town&&(debugTown===s.town||currentTown===s.town));
-  const citySpots=SPOTS.filter(s=>!s.town&&distances[s.id]!==undefined)
+  const outerVisible=SPOTS.filter(s=>s.town&&(debugTown===s.town||currentTown===s.town)&&!stamps[s.id]);
+  const citySpots=SPOTS.filter(s=>!s.town&&distances[s.id]!==undefined&&!stamps[s.id])
     .sort((a,b)=>distances[a.id]-distances[b.id]).slice(0,CITY_SHOW_LIMIT);
   return [...outerVisible,...citySpots];
 }
@@ -351,5 +352,4 @@ function startGPS(){
       updateDistances(); updateUserMarker(); updateMapMarkers();
       renderNearby(); renderMapNearby(); renderGrid();
       if(!townFetchTimer){
-        fetchTown(userPos.lat,userPos.lng);
-        townFetchTi
+        fetchTown(userPos.lat,user
