@@ -5,34 +5,57 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>超幕末 土佐よさ恋スタンプ帳</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0D0D0D; color: #E8DCC8; font-family: 'Noto Serif JP','Hiragino Mincho ProN',serif; min-height:100vh; padding-bottom:40px; }
-  header { position:sticky; top:0; z-index:50; padding:14px 20px 10px; border-bottom:1px solid rgba(200,134,10,0.3); background:rgba(13,13,13,0.97); }
+  body { background: #0D0D0D; color: #E8DCC8; font-family: 'Noto Serif JP','Hiragino Mincho ProN',serif; min-height:100vh; }
+
+  header { position:sticky; top:0; z-index:1000; padding:12px 20px 8px; border-bottom:1px solid rgba(200,134,10,0.3); background:rgba(13,13,13,0.97); }
   .header-label { font-size:10px; letter-spacing:0.3em; color:#C8860A; }
   .header-title { font-size:18px; font-weight:900; letter-spacing:0.15em; margin:2px 0; }
-  .header-count { font-size:11px; color:#8A7A60; }
-  .section { margin:14px; }
-  .gps-bar { background:rgba(30,25,10,0.7); border:1px solid rgba(200,134,10,0.3); border-radius:10px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
-  .gps-bar.active { background:rgba(10,40,10,0.7); border-color:rgba(80,180,80,0.4); }
-  .gps-status { font-size:11px; letter-spacing:0.15em; }
-  .gps-status.on { color:#80D880; } .gps-status.off { color:#C8860A; }
-  .gps-coords { font-size:10px; color:#5A5040; margin-top:3px; }
-  .gps-town   { font-size:11px; color:#C8860A; margin-top:3px; font-weight:700; }
-  .gps-error  { font-size:10px; color:#D06060; margin-top:3px; }
-  button { font-family:'Noto Serif JP',serif; cursor:pointer; border:none; border-radius:8px; padding:9px 16px; font-size:12px; letter-spacing:0.1em; }
-  .btn-gps-start { background:rgba(200,134,10,0.8); color:#0D0D0D; font-weight:700; }
-  .btn-gps-stop  { background:rgba(180,40,40,0.7); color:#E8DCC8; }
-  .mode-bar { display:flex; gap:8px; }
-  .mode-btn { flex:1; padding:10px; border-radius:8px; font-size:12px; font-weight:700; letter-spacing:0.1em; border:1px solid transparent; background:rgba(30,25,10,0.7); color:#6A5A40; }
-  .mode-btn.active-normal { background:rgba(30,80,30,0.7); color:#80D880; border-color:rgba(80,180,80,0.4); }
-  .mode-btn.active-hard   { background:rgba(80,20,20,0.7); color:#D08080; border-color:rgba(180,60,60,0.4); }
-  .mode-note { font-size:10px; color:#6A5A40; text-align:center; margin-top:6px; }
+  .header-count { font-size:11px; color:#C8B89A; }
 
-  /* 近隣スポットリスト */
+  /* タブ */
+  .tab-bar { display:flex; background:rgba(20,15,8,0.97); border-bottom:1px solid rgba(200,134,10,0.2); position:sticky; top:72px; z-index:999; }
+  .tab-btn { flex:1; padding:11px; font-size:12px; font-weight:700; letter-spacing:0.1em; font-family:'Noto Serif JP',serif; cursor:pointer; border:none; background:transparent; color:#8A7A60; border-bottom:2px solid transparent; }
+  .tab-btn.active { color:#C8860A; border-bottom:2px solid #C8860A; }
+
+  /* GPS バー */
+  .gps-bar { background:rgba(45,38,18,0.9); border:1px solid rgba(200,134,10,0.4); border-radius:10px; padding:11px 14px; display:flex; align-items:center; justify-content:space-between; margin:14px; }
+  .gps-bar.active { background:rgba(15,50,15,0.9); border-color:rgba(80,200,80,0.5); }
+  .gps-status { font-size:11px; letter-spacing:0.15em; }
+  .gps-status.on { color:#60F060; } .gps-status.off { color:#E8A030; }
+  .gps-coords { font-size:10px; color:#A89878; margin-top:3px; }
+  .gps-town   { font-size:11px; color:#F0C040; margin-top:3px; font-weight:700; }
+  .gps-error  { font-size:10px; color:#FF6060; margin-top:3px; }
+  button { font-family:'Noto Serif JP',serif; cursor:pointer; border:none; border-radius:8px; padding:9px 16px; font-size:12px; letter-spacing:0.1em; }
+  .btn-gps-start { background:rgba(220,150,20,0.9); color:#0D0D0D; font-weight:700; }
+  .btn-gps-stop  { background:rgba(200,50,50,0.8); color:#FFFFFF; }
+
+  /* モード */
+  .mode-bar { display:flex; gap:8px; margin:0 14px 14px; }
+  .mode-btn { flex:1; padding:10px; border-radius:8px; font-size:12px; font-weight:700; letter-spacing:0.1em; border:1px solid transparent; background:rgba(45,38,18,0.9); color:#C8A870; }
+  .mode-btn.active-normal { background:rgba(20,70,20,0.9); color:#60F060; border-color:rgba(80,200,80,0.5); }
+  .mode-btn.active-hard   { background:rgba(90,20,20,0.9); color:#FF8080; border-color:rgba(200,60,60,0.5); }
+  .mode-note { font-size:10px; color:#C8A870; text-align:center; margin:0 14px 14px; }
+
+  /* 地図タブ */
+  #tab-map { display:none; flex-direction:column; height:calc(100vh - 120px); }
+  #tab-map.show { display:flex; }
+  #map { flex:1; z-index:1; }
+
+  /* 地図上の近隣リスト */
+  #mapNearby { background:rgba(13,13,13,0.95); border-top:1px solid rgba(200,134,10,0.3); max-height:220px; overflow-y:auto; padding:10px 14px; }
+
+  /* スタンプ帳タブ */
+  #tab-stamp { display:none; padding-bottom:40px; }
+  #tab-stamp.show { display:block; }
+
+  .section { margin:14px; }
   .nearby-section-title { font-size:10px; letter-spacing:0.2em; color:#C8860A; margin-bottom:8px; }
   .nearby-list { display:flex; flex-direction:column; gap:8px; }
-  .nearby-item { border-radius:12px; padding:12px 14px; border:1px solid rgba(80,70,50,0.3); background:rgba(20,15,8,0.7); }
+  .nearby-item { border-radius:12px; padding:12px 14px; border:1px solid rgba(80,70,50,0.4); background:rgba(35,28,18,0.9); }
   .nearby-item.in-range { animation:pulse 2s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.88} }
   .nearby-item-top { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
@@ -41,34 +64,35 @@
   .nearby-item-name  { font-size:13px; font-weight:900; }
   .nearby-item-chara { font-size:10px; margin-top:2px; }
   .nearby-item-dist  { font-size:12px; font-weight:700; text-align:right; white-space:nowrap; }
-  .nearby-item-dist.close { color:#80D880; }
-  .nearby-item-dist.far   { color:#6A5A40; }
+  .nearby-item-dist.close { color:#60F060; }
+  .nearby-item-dist.far   { color:#C8A870; }
   .btn-stamp-sm { width:100%; padding:10px; font-size:13px; font-weight:900; letter-spacing:0.15em; border-radius:8px; }
   .btn-stamp-sm:disabled { background:rgba(60,60,60,0.5)!important; color:#5A5A5A!important; cursor:not-allowed; }
 
-  .debug-panel { background:rgba(15,15,35,0.7); border:1px solid rgba(100,100,200,0.3); border-radius:10px; padding:12px 14px; }
-  .debug-label { font-size:10px; color:#8080C0; letter-spacing:0.2em; margin-bottom:8px; }
+  .debug-panel { background:rgba(25,25,55,0.9); border:1px solid rgba(100,100,200,0.3); border-radius:10px; padding:12px 14px; }
+  .debug-label { font-size:10px; color:#B0B0E0; letter-spacing:0.2em; margin-bottom:8px; }
   .debug-btns  { display:flex; flex-wrap:wrap; gap:5px; }
-  .btn-debug { font-size:9px; padding:4px 8px; border-radius:4px; background:rgba(40,40,80,0.6); color:#8080A0; border:1px solid rgba(100,100,200,0.2); }
-  .btn-debug.active { color:#C0C0FF; border-color:rgba(150,150,255,0.5); background:rgba(60,60,120,0.6); }
+  .btn-debug { font-size:9px; padding:4px 8px; border-radius:4px; background:rgba(50,50,100,0.8); color:#B0B0D0; border:1px solid rgba(100,100,200,0.2); }
+  .btn-debug.active { color:#C0C0FF; border-color:rgba(150,150,255,0.5); background:rgba(60,60,120,0.8); }
 
   .char-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
-  .char-tab { font-size:10px; padding:5px 10px; border-radius:20px; background:rgba(30,25,15,0.8); color:#6A5A40; border:1px solid rgba(100,80,30,0.3); cursor:pointer; }
-  .char-tab.active { color:#E8DCC8; border-color:rgba(200,134,10,0.6); background:rgba(50,40,10,0.8); }
-  .stamp-book { background:rgba(15,10,5,0.7); border:1px solid rgba(200,134,10,0.2); border-radius:14px; padding:16px; }
+  .char-tab { font-size:10px; padding:5px 10px; border-radius:20px; background:rgba(35,28,18,0.9); color:#C8A870; border:1px solid rgba(100,80,30,0.4); cursor:pointer; }
+  .char-tab.active { color:#E8DCC8; border-color:rgba(200,134,10,0.7); background:rgba(60,45,10,0.9); }
+  .stamp-book { background:rgba(25,18,8,0.9); border:1px solid rgba(200,134,10,0.3); border-radius:14px; padding:16px; }
   .stamp-book-title { font-size:11px; letter-spacing:0.25em; color:#C8860A; padding-bottom:10px; margin-bottom:14px; border-bottom:1px solid rgba(200,134,10,0.2); display:flex; justify-content:space-between; align-items:center; }
   .stamp-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
-  .stamp-item { display:flex; flex-direction:column; align-items:center; padding:12px 8px; border-radius:10px; border:1px solid rgba(80,70,50,0.3); background:rgba(25,20,15,0.6); opacity:0.5; transition:all 0.4s; }
+  .stamp-item { display:flex; flex-direction:column; align-items:center; padding:12px 8px; border-radius:10px; border:1px solid rgba(80,70,50,0.4); background:rgba(35,28,18,0.9); opacity:0.5; transition:all 0.4s; }
   .stamp-item.got { opacity:1; }
   .stamp-emoji { font-size:28px; margin-bottom:6px; filter:grayscale(1); transition:filter 0.4s; }
   .stamp-item.got .stamp-emoji { filter:none; }
-  .stamp-name  { font-size:10px; text-align:center; color:#5A5040; line-height:1.4; }
+  .stamp-name  { font-size:10px; text-align:center; color:#D0C0A0; line-height:1.4; }
   .stamp-item.got .stamp-name { color:#E8DCC8; }
-  .stamp-chara { font-size:9px; text-align:center; color:#4A4030; margin-top:2px; }
-  .stamp-item.got .stamp-chara { color:#8A7060; }
-  .stamp-dist  { font-size:9px; color:#4A4030; margin-top:3px; }
+  .stamp-chara { font-size:9px; text-align:center; color:#B0A080; margin-top:2px; }
+  .stamp-item.got .stamp-chara { color:#D0B890; }
+  .stamp-dist  { font-size:9px; color:#B0A080; margin-top:3px; }
   .stamp-done  { font-size:9px; margin-top:3px; letter-spacing:0.1em; }
-  .popup-overlay { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; animation:fadeIn 0.3s ease; }
+
+  .popup-overlay { position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; animation:fadeIn 0.3s ease; }
   @keyframes fadeIn { from{opacity:0;transform:scale(.85)} to{opacity:1;transform:scale(1)} }
   .popup-card { border-radius:20px; padding:32px 24px; text-align:center; max-width:290px; width:90%; }
   .popup-emoji { font-size:56px; margin-bottom:8px; }
@@ -76,17 +100,32 @@
   .popup-name  { font-size:18px; font-weight:900; color:#E8DCC8; margin-bottom:4px; }
   .popup-chara { font-size:11px; margin-bottom:8px; }
   .popup-mode  { font-size:10px; letter-spacing:0.15em; margin-top:8px; }
+
+  /* leafletポップアップ上書き */
+  .leaflet-popup-content-wrapper { background:#1A1208; border:1px solid rgba(200,134,10,0.5); border-radius:10px; color:#E8DCC8; }
+  .leaflet-popup-tip { background:#1A1208; }
+  .leaflet-popup-content { margin:10px 14px; font-family:'Noto Serif JP',serif; }
+  .map-popup-name  { font-size:13px; font-weight:900; margin-bottom:4px; }
+  .map-popup-chara { font-size:10px; margin-bottom:8px; }
+  .map-popup-btn { width:100%; padding:8px; font-size:12px; font-weight:700; border-radius:6px; border:none; cursor:pointer; font-family:'Noto Serif JP',serif; letter-spacing:0.1em; }
 </style>
 </head>
 <body>
+
 <header>
   <div class="header-label">超幕末</div>
   <div class="header-title">土佐よさ恋スタンプ帳</div>
   <div class="header-count" id="countLabel">0 / 27 取得</div>
 </header>
 
-<div class="section">
-  <div class="gps-bar" id="gpsBar">
+<div class="tab-bar">
+  <button class="tab-btn active" id="tabBtnMap"   onclick="switchTab('map')">🗺️ 地図</button>
+  <button class="tab-btn"        id="tabBtnStamp" onclick="switchTab('stamp')">📖 スタンプ帳</button>
+</div>
+
+<!-- 地図タブ -->
+<div id="tab-map" class="show">
+  <div class="gps-bar" id="gpsBar" style="margin:10px;border-radius:8px;">
     <div>
       <div class="gps-status off" id="gpsStatus">○ GPS停止中</div>
       <div class="gps-coords" id="gpsCoords"></div>
@@ -95,33 +134,31 @@
     </div>
     <button class="btn-gps-start" id="gpsBtn" onclick="toggleGPS()">GPS開始</button>
   </div>
-</div>
-
-<div class="section">
-  <div class="mode-bar">
-    <button class="mode-btn" id="btnNormal" onclick="setMode('normal')">🗾 ノーマル</button>
-    <button class="mode-btn" id="btnHard"   onclick="setMode('hard')">⚔️ ハード</button>
+  <div style="display:flex;gap:6px;margin:0 10px 8px;">
+    <button class="mode-btn" id="btnNormal" onclick="setMode('normal')" style="margin:0;">🗾 ノーマル</button>
+    <button class="mode-btn" id="btnHard"   onclick="setMode('hard')"   style="margin:0;">⚔️ ハード</button>
   </div>
-  <div class="mode-note" id="modeNote"></div>
+  <div id="map"></div>
+  <div id="mapNearby"></div>
 </div>
 
-<div class="section" id="nearbySection"></div>
-
-<div class="section">
-  <div class="debug-panel">
-    <div class="debug-label">🛸 デバッグ：市町村外スポットのシミュレート</div>
-    <div class="debug-btns" id="debugBtns"></div>
-  </div>
-</div>
-
-<div class="section">
-  <div class="stamp-book">
-    <div class="stamp-book-title">
-      <span>スタンプ帳</span>
-      <span id="filterLabel" style="font-size:10px;color:#8A7A60;">全て表示</span>
+<!-- スタンプ帳タブ -->
+<div id="tab-stamp">
+  <div class="section">
+    <div class="debug-panel">
+      <div class="debug-label">🛸 デバッグ：市町村外スポットのシミュレート</div>
+      <div class="debug-btns" id="debugBtns"></div>
     </div>
-    <div class="char-tabs" id="charTabs"></div>
-    <div class="stamp-grid" id="stampGrid"></div>
+  </div>
+  <div class="section">
+    <div class="stamp-book">
+      <div class="stamp-book-title">
+        <span>スタンプ帳</span>
+        <span id="filterLabel" style="font-size:10px;color:#C8A870;">全て表示</span>
+      </div>
+      <div class="char-tabs" id="charTabs"></div>
+      <div class="stamp-grid" id="stampGrid"></div>
+    </div>
   </div>
 </div>
 
@@ -173,7 +210,7 @@ const SPOTS = [
   { id:"tani_tanjo",       char:"tani",     name:"谷干城生誕地石碑",         lat:33.2100660, lng:133.1318160, radius:100, town:"四万十町" },
 ];
 
-const CITY_SHOW_LIMIT = 5; // 高知市内は近い順5件
+const CITY_SHOW_LIMIT = 5;
 
 function loadStamps(){ try{const r=localStorage.getItem("stamps_v1");if(r)return JSON.parse(r);}catch(e){} const init={};SPOTS.forEach(s=>init[s.id]=false);return init; }
 function saveStamps(s){ try{localStorage.setItem("stamps_v1",JSON.stringify(s));}catch(e){} }
@@ -185,7 +222,79 @@ let userPos=null, watchId=null, tracking=false;
 let currentTown="", debugSpot=null, debugTown=null;
 let distances={}, filterChar="all";
 let townFetchTimer=null;
+let currentTab="map";
 
+// ── Leaflet地図 ───────────────────────────────────────────
+const map = L.map('map').setView([33.56, 133.53], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom:19
+}).addTo(map);
+
+let userMarker = null;
+let spotMarkers = {};
+
+// キャラカラーのカスタムピン
+function makeIcon(color, got){
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+    <path d="M14 0C6.3 0 0 6.3 0 14c0 9.8 14 22 14 22s14-12.2 14-22C28 6.3 21.7 0 14 0z"
+      fill="${got?"#555":color}" stroke="white" stroke-width="1.5"/>
+    <circle cx="14" cy="14" r="6" fill="white" opacity="${got?0.3:0.9}"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg, className:'', iconSize:[28,36], iconAnchor:[14,36], popupAnchor:[0,-36]
+  });
+}
+
+function updateMapMarkers(){
+  SPOTS.forEach(s=>{
+    const c=CHARS[s.char];
+    const got=stamps[s.id];
+    const inRange=isInRange(s);
+    if(spotMarkers[s.id]){
+      spotMarkers[s.id].setIcon(makeIcon(c.color, got));
+    } else {
+      const m=L.marker([s.lat,s.lng],{icon:makeIcon(c.color,got)}).addTo(map);
+      m.bindPopup(makePopupHtml(s));
+      m.on('click',()=>{ m.setPopupContent(makePopupHtml(s)); });
+      spotMarkers[s.id]=m;
+    }
+  });
+}
+
+function makePopupHtml(s){
+  const c=CHARS[s.char];
+  const got=stamps[s.id];
+  const inRange=isInRange(s);
+  const btnHtml=inRange
+    ? `<button class="map-popup-btn" onclick="getStamp('${s.id}')"
+        style="background:${got?"rgba(60,60,60,0.8)":`${c.color}`};color:${got?"#888":"#0D0D0D"};"
+        ${got?"disabled":""}>
+        ${got?"✓ 取得済み":"🔖 スタンプを押す"}
+       </button>`
+    : `<div style="font-size:10px;color:#8A7A60;text-align:center;">現地で押せます</div>`;
+  return `<div>
+    <div class="map-popup-name" style="color:${c.color}">${s.name}</div>
+    <div class="map-popup-chara" style="color:${c.color}">${c.emoji} ${c.name}</div>
+    ${btnHtml}
+  </div>`;
+}
+
+function updateUserMarker(){
+  const pos=debugSpot||userPos;
+  if(!pos){ if(userMarker){map.removeLayer(userMarker);userMarker=null;} return; }
+  const blueIcon=L.divIcon({
+    html:`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+      <circle cx="10" cy="10" r="8" fill="#4A90E2" stroke="white" stroke-width="2"/>
+      <circle cx="10" cy="10" r="3" fill="white"/>
+    </svg>`,
+    className:'', iconSize:[20,20], iconAnchor:[10,10]
+  });
+  if(userMarker){ userMarker.setLatLng([pos.lat,pos.lng]); }
+  else { userMarker=L.marker([pos.lat,pos.lng],{icon:blueIcon,zIndexOffset:1000}).addTo(map); }
+  map.setView([pos.lat,pos.lng],15);
+}
+
+// ── 市町村API ─────────────────────────────────────────────
 async function fetchTown(lat,lng){
   try{
     const url=`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${lng}&lat=${lat}`;
@@ -195,19 +304,17 @@ async function fetchTown(lat,lng){
     const parts=muniNm.split(" ");
     currentTown=parts[parts.length-1]||"";
     document.getElementById("gpsTown").textContent=currentTown?"📍 "+currentTown:"";
-    renderNearby();
-  }catch(e){ currentTown=""; renderNearby(); }
+    renderNearby(); renderMapNearby(); updateMapMarkers();
+  }catch(e){ currentTown=""; }
 }
 
+// ── 距離計算 ──────────────────────────────────────────────
 function getDistance(la1,ln1,la2,ln2){
   const R=6371000,dL=(la2-la1)*Math.PI/180,dG=(ln2-ln1)*Math.PI/180;
   const a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dG/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
-
-function distLabel(m){
-  return m>=1000?(m/1000).toFixed(1)+"km":m+"m";
-}
+function distLabel(m){ return m>=1000?(m/1000).toFixed(1)+"km":m+"m"; }
 
 function updateDistances(){
   const pos=debugSpot||userPos;
@@ -215,119 +322,24 @@ function updateDistances(){
   SPOTS.forEach(s=>{ distances[s.id]=Math.round(getDistance(pos.lat,pos.lng,s.lat,s.lng)); });
 }
 
-// スポットが「押せる状態か」判定
 function isInRange(s){
   const town=debugTown||currentTown;
-  if(mode==="hard") return distances[s.id]<=s.radius;
+  if(mode==="hard") return distances[s.id]!==undefined && distances[s.id]<=s.radius;
   if(s.town) return town===s.town;
-  return distances[s.id]<=s.radius;
+  return distances[s.id]!==undefined && distances[s.id]<=s.radius;
 }
 
-// 表示するスポットを決める
 function getVisibleSpots(){
   const pos=debugSpot||userPos;
   const town=debugTown||currentTown;
   if(!pos && !town) return [];
-
-  // 市町村外スポット：その市町村内にいる場合だけ表示
   const outerVisible=SPOTS.filter(s=>s.town&&(debugTown===s.town||currentTown===s.town));
-
-  // 高知市内スポット：距離順で上位5件
-  const citySpots=SPOTS
-    .filter(s=>!s.town)
-    .filter(s=>distances[s.id]!==undefined)
-    .sort((a,b)=>distances[a.id]-distances[b.id])
-    .slice(0,CITY_SHOW_LIMIT);
-
+  const citySpots=SPOTS.filter(s=>!s.town&&distances[s.id]!==undefined)
+    .sort((a,b)=>distances[a.id]-distances[b.id]).slice(0,CITY_SHOW_LIMIT);
   return [...outerVisible,...citySpots];
 }
 
-function renderNearby(){
-  const sec=document.getElementById("nearbySection");
-  const pos=debugSpot||userPos;
-  const town=debugTown||currentTown;
-  if(!pos && !town){sec.innerHTML="";return;}
-
-  updateDistances();
-  const visible=getVisibleSpots();
-  if(!visible.length){sec.innerHTML="";return;}
-
-  const modeColor=mode==="hard"?"#D08080":"#80D880";
-  const modeLabel=mode==="hard"?"⚔️ ハード":"🗾 ノーマル";
-
-  sec.innerHTML=`
-    <div class="nearby-section-title">📍 近くのスポット <span style="color:${modeColor};font-size:9px;">${modeLabel}</span></div>
-    <div class="nearby-list">
-      ${visible.map(s=>{
-        const c=CHARS[s.char];
-        const got=stamps[s.id];
-        const d=distances[s.id];
-        const inRange=isInRange(s);
-        const distStr=d!==undefined?distLabel(d):"---";
-        const distColor=inRange?"#80D880":"#6A5A40";
-
-        // ノーマル×市町村外は「市町村内」表示
-        const distDisplay=(mode==="normal"&&s.town&&town===s.town)
-          ? `<span style="color:#80D880;font-size:11px;font-weight:700;">${s.town}内</span>`
-          : `<span class="nearby-item-dist ${inRange?"close":"far"}">${distStr}</span>`;
-
-        return `<div class="nearby-item ${inRange&&!got?"in-range":""}"
-          style="border-color:${inRange?c.color+"60":"rgba(80,70,50,0.3)"};background:${inRange?c.color+"12":"rgba(20,15,8,0.7)"}">
-          <div class="nearby-item-top">
-            <div class="nearby-item-emoji">${c.emoji}</div>
-            <div class="nearby-item-info">
-              <div class="nearby-item-name" style="color:${inRange?c.color:"#E8DCC8"}">${s.name}</div>
-              <div class="nearby-item-chara" style="color:${c.color}">${c.name}</div>
-            </div>
-            ${distDisplay}
-          </div>
-          ${inRange?`
-          <button class="btn-stamp-sm"
-            style="background:${got?"rgba(60,60,60,0.5)":`linear-gradient(135deg,${c.color},${c.color}99)`};color:${got?"#5A5A5A":"#0D0D0D"}"
-            ${got?"disabled":""} onclick="getStamp('${s.id}')">
-            ${got?"✓ 取得済み":"🔖 スタンプを押す"}
-          </button>`:""}
-        </div>`;
-      }).join("")}
-    </div>`;
-}
-
-function renderGrid(){
-  const filtered=filterChar==="all"?SPOTS:SPOTS.filter(s=>s.char===filterChar);
-  document.getElementById("stampGrid").innerHTML=filtered.map(s=>{
-    const c=CHARS[s.char],got=stamps[s.id],d=distances[s.id];
-    const distHtml=(!got&&d!==undefined)?`<div class="stamp-dist">約${distLabel(d)}</div>`:"";
-    const doneHtml=got?`<div class="stamp-done" style="color:${c.color}">取得済</div>`:"";
-    const townHtml=s.town?`<div style="font-size:8px;color:#4A4060;margin-top:2px;">🗾${s.town}</div>`:"";
-    return `<div class="stamp-item ${got?"got":""}" style="${got?`background:${c.color}18;border-color:${c.color}50`:""}">
-      <div class="stamp-emoji">${c.emoji}</div>
-      <div class="stamp-name">${s.name}</div>
-      <div class="stamp-chara">${c.name}</div>
-      ${townHtml}${distHtml}${doneHtml}
-    </div>`;
-  }).join("");
-}
-
-function renderCount(){
-  const n=Object.values(stamps).filter(Boolean).length;
-  document.getElementById("countLabel").textContent=n+" / "+SPOTS.length+" 取得";
-}
-
-function renderCharTabs(){
-  document.getElementById("charTabs").innerHTML=
-    `<button id="tab_all" class="char-tab active" onclick="setFilter('all')">全員</button>`+
-    Object.entries(CHARS).map(([k,c])=>
-      `<button id="tab_${k}" class="char-tab" onclick="setFilter('${k}')">${c.emoji}${c.name}</button>`
-    ).join("");
-}
-
-function renderDebugBtns(){
-  const outer=SPOTS.filter(s=>s.town);
-  document.getElementById("debugBtns").innerHTML=
-    `<button class="btn-debug" onclick="setDebug(null,null)">リセット</button>`+
-    outer.map(s=>`<button id="dbg_${s.id}" class="btn-debug" onclick="setDebug('${s.id}','${s.town}')">${CHARS[s.char].emoji}${s.name.slice(0,6)}</button>`).join("");
-}
-
+// ── GPS ───────────────────────────────────────────────────
 function toggleGPS(){tracking?stopGPS():startGPS();}
 function startGPS(){
   if(!navigator.geolocation){document.getElementById("gpsError").textContent="GPSに対応していません";return;}
@@ -336,9 +348,8 @@ function startGPS(){
       userPos={lat:pos.coords.latitude,lng:pos.coords.longitude};
       document.getElementById("gpsCoords").textContent=userPos.lat.toFixed(5)+", "+userPos.lng.toFixed(5);
       document.getElementById("gpsError").textContent="";
-      updateDistances();
-      renderNearby();
-      renderGrid();
+      updateDistances(); updateUserMarker(); updateMapMarkers();
+      renderNearby(); renderMapNearby(); renderGrid();
       if(!townFetchTimer){
         fetchTown(userPos.lat,userPos.lng);
         townFetchTimer=setInterval(()=>{if(userPos)fetchTown(userPos.lat,userPos.lng);},30000);
@@ -365,51 +376,47 @@ function stopGPS(){
   document.getElementById("gpsBtn").className="btn-gps-start";
   document.getElementById("gpsCoords").textContent="";
   document.getElementById("gpsTown").textContent="";
-  distances={};
-  renderNearby();renderGrid();
+  distances={}; if(userMarker){map.removeLayer(userMarker);userMarker=null;}
+  renderNearby(); renderMapNearby(); renderGrid(); updateMapMarkers();
 }
 
+// ── モード ────────────────────────────────────────────────
 function setMode(m){
   mode=m;saveMode(m);
   document.getElementById("btnNormal").className="mode-btn"+(m==="normal"?" active-normal":"");
   document.getElementById("btnHard").className  ="mode-btn"+(m==="hard"  ?" active-hard":"");
-  document.getElementById("modeNote").textContent=
-    m==="normal"?"ノーマル：遠方スポットは市町村内で押せる・高知市内は近い順5件表示":
-                  "ハード：全スポット100m以内で判定・高知市内は近い順5件表示";
-  renderNearby();
+  renderNearby(); renderMapNearby(); updateMapMarkers();
 }
 
+// ── デバッグ ──────────────────────────────────────────────
 function setDebug(id,town){
   debugSpot=id?SPOTS.find(s=>s.id===id):null;
   debugTown=town||null;
   document.querySelectorAll(".btn-debug").forEach(b=>b.classList.remove("active"));
   if(id)document.getElementById("dbg_"+id)?.classList.add("active");
   document.getElementById("gpsTown").textContent=town?"📍 "+town+"（デバッグ）":"";
-  updateDistances();
-  renderNearby();renderGrid();
+  updateDistances(); updateUserMarker(); updateMapMarkers();
+  renderNearby(); renderMapNearby(); renderGrid();
+  if(debugSpot) map.setView([debugSpot.lat,debugSpot.lng],15);
 }
 
-function setFilter(char){
-  filterChar=char;
-  document.querySelectorAll(".char-tab").forEach(t=>t.classList.remove("active"));
-  document.getElementById("tab_"+char)?.classList.add("active");
-  document.getElementById("filterLabel").textContent=char==="all"?"全て表示":CHARS[char]?.name;
-  renderGrid();
-}
-
+// ── スタンプ取得 ──────────────────────────────────────────
 function getStamp(id){
   const spot=SPOTS.find(s=>s.id===id);
   if(!spot||stamps[id])return;
-  stamps[id]=true;
-  saveStamps(stamps);
+  stamps[id]=true; saveStamps(stamps);
   showPopup(spot);
-  renderNearby();renderGrid();renderCount();
+  updateMapMarkers();
+  renderNearby(); renderMapNearby(); renderGrid(); renderCount();
+  // ポップアップ更新
+  if(spotMarkers[id]) spotMarkers[id].setPopupContent(makePopupHtml(spot));
 }
 
+// ── ポップアップ ──────────────────────────────────────────
 function showPopup(spot){
   const c=CHARS[spot.char];
   const modeLabel=mode==="hard"?"⚔️ ハードモード取得":"🗾 ノーマルモード取得";
-  const modeColor=mode==="hard"?"#D08080":"#80D880";
+  const modeColor=mode==="hard"?"#FF8080":"#60F060";
   document.getElementById("popupArea").innerHTML=`
     <div class="popup-overlay" onclick="closePopup()">
       <div class="popup-card" style="background:linear-gradient(135deg,#1A1208,#0D0D0D);border:2px solid ${c.color};box-shadow:0 0 60px ${c.color}40">
@@ -424,11 +431,109 @@ function showPopup(spot){
 }
 function closePopup(){document.getElementById("popupArea").innerHTML="";}
 
+// ── タブ切り替え ──────────────────────────────────────────
+function switchTab(tab){
+  currentTab=tab;
+  document.getElementById("tab-map").className=tab==="map"?"show":"";
+  document.getElementById("tab-stamp").className=tab==="stamp"?"show":"";
+  document.getElementById("tabBtnMap").className="tab-btn"+(tab==="map"?" active":"");
+  document.getElementById("tabBtnStamp").className="tab-btn"+(tab==="stamp"?" active":"");
+  if(tab==="map") setTimeout(()=>map.invalidateSize(),100);
+}
+
+// ── フィルタ ──────────────────────────────────────────────
+function setFilter(char){
+  filterChar=char;
+  document.querySelectorAll(".char-tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById("tab_"+char)?.classList.add("active");
+  document.getElementById("filterLabel").textContent=char==="all"?"全て表示":CHARS[char]?.name;
+  renderGrid();
+}
+
+// ── レンダリング ──────────────────────────────────────────
+function renderCount(){
+  const n=Object.values(stamps).filter(Boolean).length;
+  document.getElementById("countLabel").textContent=n+" / "+SPOTS.length+" 取得";
+}
+
+function nearbyItemHtml(s){
+  const c=CHARS[s.char],got=stamps[s.id],d=distances[s.id];
+  const inRange=isInRange(s);
+  const distDisplay=(mode==="normal"&&s.town&&(debugTown===s.town||currentTown===s.town))
+    ?`<span style="color:#60F060;font-size:11px;font-weight:700;">${s.town}内</span>`
+    :`<span class="nearby-item-dist ${inRange?"close":"far"}">${d!==undefined?distLabel(d):"---"}</span>`;
+  return `<div class="nearby-item ${inRange&&!got?"in-range":""}"
+    style="border-color:${inRange?c.color+"60":"rgba(80,70,50,0.4)"};background:${inRange?c.color+"12":"rgba(35,28,18,0.9)"}">
+    <div class="nearby-item-top">
+      <div class="nearby-item-emoji">${c.emoji}</div>
+      <div class="nearby-item-info">
+        <div class="nearby-item-name" style="color:${inRange?c.color:"#E8DCC8"}">${s.name}</div>
+        <div class="nearby-item-chara" style="color:${c.color}">${c.name}</div>
+      </div>
+      ${distDisplay}
+    </div>
+    ${inRange?`<button class="btn-stamp-sm"
+      style="background:${got?"rgba(60,60,60,0.5)":`linear-gradient(135deg,${c.color},${c.color}99)`};color:${got?"#5A5A5A":"#0D0D0D"}"
+      ${got?"disabled":""} onclick="getStamp('${s.id}')">
+      ${got?"✓ 取得済み":"🔖 スタンプを押す"}
+    </button>`:""}
+  </div>`;
+}
+
+function renderNearby(){
+  // スタンプ帳タブには近隣リストなし（地図タブに集約）
+}
+
+function renderMapNearby(){
+  const el=document.getElementById("mapNearby");
+  const visible=getVisibleSpots();
+  if(!visible.length){el.innerHTML="";el.style.display="none";return;}
+  el.style.display="block";
+  const modeColor=mode==="hard"?"#FF8080":"#60F060";
+  el.innerHTML=`<div style="font-size:10px;letter-spacing:0.2em;color:#C8860A;margin-bottom:8px;">
+    📍 近くのスポット <span style="color:${modeColor};font-size:9px;">${mode==="hard"?"⚔️ ハード":"🗾 ノーマル"}</span>
+  </div>`+visible.map(nearbyItemHtml).join("");
+}
+
+function renderGrid(){
+  const filtered=filterChar==="all"?SPOTS:SPOTS.filter(s=>s.char===filterChar);
+  document.getElementById("stampGrid").innerHTML=filtered.map(s=>{
+    const c=CHARS[s.char],got=stamps[s.id],d=distances[s.id];
+    const distHtml=(!got&&d!==undefined)?`<div class="stamp-dist">約${distLabel(d)}</div>`:"";
+    const doneHtml=got?`<div class="stamp-done" style="color:${c.color}">取得済</div>`:"";
+    const townHtml=s.town?`<div style="font-size:8px;color:#8080A0;margin-top:2px;">🗾${s.town}</div>`:"";
+    return `<div class="stamp-item ${got?"got":""}" style="${got?`background:${c.color}18;border-color:${c.color}50`:""}">
+      <div class="stamp-emoji">${c.emoji}</div>
+      <div class="stamp-name">${s.name}</div>
+      <div class="stamp-chara">${c.name}</div>
+      ${townHtml}${distHtml}${doneHtml}
+    </div>`;
+  }).join("");
+}
+
+function renderCharTabs(){
+  document.getElementById("charTabs").innerHTML=
+    `<button id="tab_all" class="char-tab active" onclick="setFilter('all')">全員</button>`+
+    Object.entries(CHARS).map(([k,c])=>
+      `<button id="tab_${k}" class="char-tab" onclick="setFilter('${k}')">${c.emoji}${c.name}</button>`
+    ).join("");
+}
+
+function renderDebugBtns(){
+  const outer=SPOTS.filter(s=>s.town);
+  document.getElementById("debugBtns").innerHTML=
+    `<button class="btn-debug" onclick="setDebug(null,null)">リセット</button>`+
+    outer.map(s=>`<button id="dbg_${s.id}" class="btn-debug" onclick="setDebug('${s.id}','${s.town}')">${CHARS[s.char].emoji}${s.name.slice(0,6)}</button>`).join("");
+}
+
+// 初期化
 setMode(mode);
+updateMapMarkers();
 renderCharTabs();
 renderDebugBtns();
 renderCount();
 renderGrid();
+document.getElementById("mapNearby").style.display="none";
 </script>
 </body>
 </html>
