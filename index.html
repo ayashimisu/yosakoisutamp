@@ -205,7 +205,7 @@ const SPOTS = [
   { id:"manjiro_zo",       char:"manjiro",  name:"中浜万次郎像",             lat:32.7255834, lng:133.0195690, radius:100, town:"土佐清水市" },
   { id:"yodo_tei",         char:"yodo",     name:"山内容堂邸跡",             lat:33.5562204, lng:133.5328997, radius:80,  town:null },
   { id:"yodo_tanjo",       char:"yodo",     name:"山内容堂公誕生之地の碑",   lat:33.5609440, lng:133.5345901, radius:80,  town:null },
-  { id:"yodo_kochi",       char:"yodo",     name:"高知城",                   lat:33.5608125, lng:133.5314844, radius:500, town:null },
+  { id:"yodo_kochi",       char:"yodo",     name:"高知城",                   lat:33.5608125, lng:133.5314844, radius:150, town:null },
   { id:"tani_figure",      char:"tani",     name:"谷干城フィギュア像",       lat:33.2087536, lng:133.1360827, radius:100, town:"四万十町" },
   { id:"tani_tanjo",       char:"tani",     name:"谷干城生誕地石碑",         lat:33.2100660, lng:133.1318160, radius:100, town:"四万十町" },
 ];
@@ -249,6 +249,7 @@ function updateMapMarkers(){
   SPOTS.forEach(s=>{
     const c=CHARS[s.char];
     const got=stamps[s.id];
+    const inRange=isInRange(s);
     if(spotMarkers[s.id]){
       spotMarkers[s.id].setIcon(makeIcon(c.color, got));
     } else {
@@ -289,10 +290,8 @@ function updateUserMarker(){
     className:'', iconSize:[20,20], iconAnchor:[10,10]
   });
   if(userMarker){ userMarker.setLatLng([pos.lat,pos.lng]); }
-  else {
-    userMarker=L.marker([pos.lat,pos.lng],{icon:blueIcon,zIndexOffset:1000}).addTo(map);
-    map.setView([pos.lat,pos.lng],15); // 最初の1回だけ移動
-  }
+  else { userMarker=L.marker([pos.lat,pos.lng],{icon:blueIcon,zIndexOffset:1000}).addTo(map); }
+  map.setView([pos.lat,pos.lng],15);
 }
 
 // ── 市町村API ─────────────────────────────────────────────
@@ -334,8 +333,8 @@ function getVisibleSpots(){
   const pos=debugSpot||userPos;
   const town=debugTown||currentTown;
   if(!pos && !town) return [];
-  const outerVisible=SPOTS.filter(s=>s.town&&(debugTown===s.town||currentTown===s.town)&&!stamps[s.id]);
-  const citySpots=SPOTS.filter(s=>!s.town&&distances[s.id]!==undefined&&!stamps[s.id])
+  const outerVisible=SPOTS.filter(s=>s.town&&(debugTown===s.town||currentTown===s.town));
+  const citySpots=SPOTS.filter(s=>!s.town&&distances[s.id]!==undefined)
     .sort((a,b)=>distances[a.id]-distances[b.id]).slice(0,CITY_SHOW_LIMIT);
   return [...outerVisible,...citySpots];
 }
@@ -353,3 +352,4 @@ function startGPS(){
       renderNearby(); renderMapNearby(); renderGrid();
       if(!townFetchTimer){
         fetchTown(userPos.lat,userPos.lng);
+        townFetchTi
